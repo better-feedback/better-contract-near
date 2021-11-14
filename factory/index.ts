@@ -1,7 +1,7 @@
 import { context, ContractPromiseBatch, base58, u128 } from 'near-sdk-as'
 import { BetterDAO, daos } from './model'
 
-const CODE = includeBytes('../build/bounty/release.wasm')
+const CODE = includeBytes('../build/bountydao/release.wasm')
 
 export function getDAOs(): BetterDAO[] {
   return daos.values()

@@ -20,9 +20,9 @@ class Fund {
 class Log {
   timestamp: u64
   message: string
-  status: string
+  status: i32
 
-  constructor(status: string, message: string) {
+  constructor(status: i32, message: string) {
     this.status = status
     this.message = message
     this.timestamp = context.blockTimestamp
@@ -32,12 +32,12 @@ class Log {
 const FACTORY_CONTRACT = 'chezhe.testnet'
 
 enum STATUS {
-  PENDING = 'pending',
-  ACCEPTED = 'accepted',
-  REJECTED = 'rejected',
-  IN_PROGRESS = 'in progress',
-  DONE = 'done',
-  CLOSED = 'closed',
+  PENDING,
+  ACCEPTED,
+  REJECTED,
+  IN_PROGRESS,
+  DONE,
+  CLOSED,
 }
 
 @nearBindgen
@@ -49,7 +49,7 @@ export class BetterBounty {
   createdAt: u64
   likes: string[]
   tags: string[]
-  status: string
+  status: i32
   claimer: string
   funders: Fund[]
   logs: Log[]
@@ -61,7 +61,7 @@ export class BetterBounty {
     this.description = description
     this.createdAt = context.blockTimestamp
     this.likes = []
-    this.status = 'pending'
+    this.status = STATUS.PENDING
     this.funders = []
     this.claimer = ''
   }
@@ -87,12 +87,7 @@ export class BetterBounty {
 
   reject(message: string): void {
     // only owner of dao
-    if (this.status !== STATUS.PENDING) {
-      return assert(
-        false,
-        'Bounty is ' + this.status + ', you can only reject pending bounty'
-      )
-    }
+    assert(this.status !== STATUS.PENDING, 'you can only reject pending bounty')
     this.status = STATUS.REJECTED
     const log = new Log(STATUS.REJECTED, message)
     this.logs.push(log)
@@ -100,12 +95,7 @@ export class BetterBounty {
 
   accept(message: string): void {
     // only owner of dao
-    if (this.status !== STATUS.PENDING) {
-      return assert(
-        false,
-        'Bounty is ' + this.status + ', you can only accept pending bounty'
-      )
-    }
+    assert(this.status !== STATUS.PENDING, 'you can only accept pending bounty')
     this.status = STATUS.ACCEPTED
     const log = new Log(STATUS.ACCEPTED, message)
     this.logs.push(log)
@@ -113,12 +103,10 @@ export class BetterBounty {
 
   start(message: string): void {
     // only owner of dao
-    if (this.status !== STATUS.ACCEPTED) {
-      return assert(
-        false,
-        'Bounty is ' + this.status + ', you can only start a accepted bounty'
-      )
-    }
+    assert(
+      this.status !== STATUS.ACCEPTED,
+      'you can only start a accepted bounty'
+    )
     this.status = STATUS.IN_PROGRESS
     const log = new Log(STATUS.IN_PROGRESS, message)
     this.logs.push(log)
@@ -126,14 +114,10 @@ export class BetterBounty {
 
   finish(claimer: string, message: string): void {
     // only owner of dao
-    if (this.status !== STATUS.IN_PROGRESS) {
-      return assert(
-        false,
-        'Bounty is ' +
-          this.status +
-          ', you can only finish a in-progress bounty'
-      )
-    }
+    assert(
+      this.status !== STATUS.IN_PROGRESS,
+      'you can only finish a in-progress bounty'
+    )
     this.status = STATUS.DONE
     this.claimer = claimer
     const log = new Log(

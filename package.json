@@ -4,10 +4,10 @@
   "license": "UNLICENSED",
   "private": true,
   "scripts": {
-    "build": "asb",
+    "build": "asb build factory/index.ts -d build/release --target factory",
     "build:debug": "asb --target debug",
     "test": "asp --nologo",
-    "build:contract:bounty": "asb build bounty/index.ts -d build/release --target bounty",
+    "build:contract:bountydao": "asb build bountydao/index.ts -d build/release --target bountydao",
     "build:contract": "node compile.js",
     "build:contract:debug": "node compile.js --debug",
     "dev:deploy:contract": "near dev-deploy",
