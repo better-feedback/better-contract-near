@@ -9,13 +9,19 @@ export class BetterDAO {
   description: string
   createdAt: u64
 
-  constructor(name: string, url: string, description: string, logoUrl: string) {
+  constructor(name: string, url: string, logoUrl: string, description: string) {
     this.name = name
     this.owner = context.sender
     this.url = url
     this.logoUrl = logoUrl
     this.description = description
     this.createdAt = context.blockTimestamp
+  }
+
+  updateMetadata(url: string, logoUrl: string, description: string): void {
+    this.url = url
+    this.logoUrl = logoUrl
+    this.description = description
   }
 }
 

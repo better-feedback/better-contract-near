@@ -1,5 +1,11 @@
-import { context, u128, PersistentUnorderedMap } from 'near-sdk-as'
+import {
+  context,
+  u128,
+  PersistentUnorderedMap,
+  ContractPromise,
+} from 'near-sdk-as'
 
+@nearBindgen
 class Fund {
   amount: u128
   funder: string
@@ -11,6 +17,30 @@ class Fund {
 }
 
 @nearBindgen
+class Log {
+  timestamp: u64
+  message: string
+  status: string
+
+  constructor(status: string, message: string) {
+    this.status = status
+    this.message = message
+    this.timestamp = context.blockTimestamp
+  }
+}
+
+const FACTORY_CONTRACT = 'chezhe.testnet'
+
+enum STATUS {
+  PENDING = 'pending',
+  ACCEPTED = 'accepted',
+  REJECTED = 'rejected',
+  IN_PROGRESS = 'in progress',
+  DONE = 'done',
+  CLOSED = 'closed',
+}
+
+@nearBindgen
 export class BetterBounty {
   id: number
   title: string
@@ -18,9 +48,11 @@ export class BetterBounty {
   description: string
   createdAt: u64
   likes: string[]
+  tags: string[]
   status: string
   claimer: string
   funders: Fund[]
+  logs: Log[]
 
   constructor(id: number, title: string, description: string) {
     this.id = id
@@ -42,30 +74,79 @@ export class BetterBounty {
     this.likes.push(context.sender)
   }
 
-  decline(): void {
-    // only owner of dao
-    this.status = 'decline'
+  isOwner(): ContractPromise {
+    const name = context.contractName.split('.')[0]
+    const promise = ContractPromise.create(
+      FACTORY_CONTRACT,
+      'getDAO',
+      { name },
+      100000000000000
+    )
+    return promise
   }
 
-  accept(): void {
+  reject(message: string): void {
     // only owner of dao
-    this.status = 'accept'
+    if (this.status !== STATUS.PENDING) {
+      return assert(
+        false,
+        'Bounty is ' + this.status + ', you can only reject pending bounty'
+      )
+    }
+    this.status = STATUS.REJECTED
+    const log = new Log(STATUS.REJECTED, message)
+    this.logs.push(log)
   }
 
-  start(): void {
+  accept(message: string): void {
     // only owner of dao
-    this.status = 'inprogress'
+    if (this.status !== STATUS.PENDING) {
+      return assert(
+        false,
+        'Bounty is ' + this.status + ', you can only accept pending bounty'
+      )
+    }
+    this.status = STATUS.ACCEPTED
+    const log = new Log(STATUS.ACCEPTED, message)
+    this.logs.push(log)
   }
 
-  finish(claimer: string): void {
+  start(message: string): void {
     // only owner of dao
-    this.status = 'done'
+    if (this.status !== STATUS.ACCEPTED) {
+      return assert(
+        false,
+        'Bounty is ' + this.status + ', you can only start a accepted bounty'
+      )
+    }
+    this.status = STATUS.IN_PROGRESS
+    const log = new Log(STATUS.IN_PROGRESS, message)
+    this.logs.push(log)
+  }
+
+  finish(claimer: string, message: string): void {
+    // only owner of dao
+    if (this.status !== STATUS.IN_PROGRESS) {
+      return assert(
+        false,
+        'Bounty is ' +
+          this.status +
+          ', you can only finish a in-progress bounty'
+      )
+    }
+    this.status = STATUS.DONE
     this.claimer = claimer
+    const log = new Log(
+      STATUS.DONE,
+      message + '\n' + claimer + ' is set into claimer'
+    )
+    this.logs.push(log)
   }
 
-  close(): void {
-    // only owner of dao
-    this.status = 'closed'
+  close(message: string): void {
+    this.status = STATUS.CLOSED
+    const log = new Log(STATUS.DONE, message)
+    this.logs.push(log)
     // return fund to funders
   }
 

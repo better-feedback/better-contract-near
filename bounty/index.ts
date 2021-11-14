@@ -27,42 +27,42 @@ export function like(id: string): void {
   }
 }
 
-export function decline(id: string): void {
+export function reject(id: string, message: string): void {
   const bounty = bounties.get(id, null)
   assert(bounty != null, 'bounty not found')
   if (bounty) {
-    bounty.decline()
+    bounty.reject(message)
   }
 }
 
-export function accept(id: string): void {
+export function accept(id: string, message: string): void {
   const bounty = bounties.get(id, null)
   assert(bounty != null, 'bounty not found')
   if (bounty) {
-    bounty.accept()
+    bounty.accept(message)
   }
 }
 
-export function start(id: string): void {
+export function start(id: string, message: string): void {
   const bounty = bounties.get(id, null)
   assert(bounty != null, 'bounty not found')
   if (bounty) {
-    bounty.start()
+    bounty.start(message)
   }
 }
 
-export function finish(id: string, claimer: string): void {
+export function finish(id: string, claimer: string, message: string): void {
   const bounty = bounties.get(id, null)
   assert(bounty != null, 'bounty not found')
   if (bounty) {
-    bounty.finish(claimer)
+    bounty.finish(claimer, message)
   }
 }
 
-export function close(id: string): void {
+export function close(id: string, message: string): void {
   const bounty = bounties.get(id, null)
   assert(bounty != null, 'bounty not found')
   if (bounty) {
-    bounty.close()
+    bounty.close(message)
   }
 }

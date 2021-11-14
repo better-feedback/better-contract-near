@@ -7,11 +7,17 @@ export function getDAOs(): BetterDAO[] {
   return daos.values()
 }
 
+export function getDAO(name: string): BetterDAO | null {
+  const dao = daos.get(name, null)
+  return dao
+}
+
 export function createDAO(
   name: string,
   url: string,
   logoUrl: string,
-  description: string
+  description: string,
+  tags: string[]
 ): void {
   assert(!daos.contains(name), 'DAO already exists')
 
@@ -19,7 +25,7 @@ export function createDAO(
 
   // 1 Near
   const minAmount = u128.fromString('1000000000000000000000000')
-  assert(context.accountBalance >= minAmount, 'Not enough balance')
+  assert(context.accountBalance > minAmount, 'Not enough balance')
 
   ContractPromiseBatch.create(sub_account_id)
     .create_account()
@@ -30,4 +36,19 @@ export function createDAO(
   const dao = new BetterDAO(name, url, logoUrl, description)
 
   daos.set(name, dao)
+}
+
+export function updateMetadata(
+  name: string,
+  url: string,
+  logoUrl: string,
+  description: string
+): void {
+  const dao = daos.get(name, null)
+  assert(dao != null, 'DAO does not exist')
+  if (dao) {
+    assert(dao.owner !== context.sender, 'Not owner')
+    dao.updateMetadata(url, logoUrl, description)
+    daos.set(name, dao)
+  }
 }
