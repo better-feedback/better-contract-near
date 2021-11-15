@@ -7,11 +7,11 @@
     "build": "asb build factory/index.ts -d build/release --target factory",
     "build:debug": "asb --target debug",
     "test": "asp --nologo",
-    "build:contract:bountydao": "asb build bountydao/index.ts -d build/release --target bountydao",
+    "build:contract:feedbackdao": "asb build feedbackdao/index.ts -d build/release --target feedbackdao",
     "build:contract": "node compile.js",
     "build:contract:debug": "node compile.js --debug",
     "dev:deploy:contract": "near dev-deploy",
-    "deploy:contract": "near deploy --accountId chezhe.testnet --wasmFile build/release/better.wasm",
+    "deploy:contract": "near deploy --accountId chezhe.testnet --wasmFile build/factory/release.wasm",
     "deploy": "npm run build && npm run deploy:contract",
     "prestart": "npm run build:contract:debug && npm run dev:deploy:contract"
   },
