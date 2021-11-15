@@ -22,7 +22,7 @@ export enum Status {
 }
 
 @nearBindgen
-class Fund {
+export class Fund {
   amount: u128
   funder: string
 
@@ -33,7 +33,7 @@ class Fund {
 }
 
 @nearBindgen
-class Log {
+export class Log {
   timestamp: u64
   message: string
   status: Status
@@ -76,21 +76,22 @@ export class Feedback {
   logs: PersistentSet<Log>
 
   constructor(id: number, title: string, description: string, tags: string[]) {
+    const prefix = id.toString() + '-'
     this.id = id
     this.title = title
     this.description = description
     this.tags = tags
     this.createdAt = context.blockTimestamp
     this.createdBy = context.sender
-    this.likes = new PersistentSet<AccountId>('likes')
+    this.likes = new PersistentSet<AccountId>(prefix + '-likes')
     this.status = Status.UnderReview
-    this.hunter = new PersistentSet<AccountId>('hunter')
-    this.funds = new PersistentSet<Fund>('funds')
-    this.logs = new PersistentSet<Log>('logs')
-    this.logs.add(new Log(Status.UnderReview, 'Feedback created'))
+    this.hunter = new PersistentSet<AccountId>(prefix + 'hunter')
+    this.funds = new PersistentSet<Fund>(prefix + 'funds')
+    this.logs = new PersistentSet<Log>(prefix + 'logs')
+    this.logs.add(new Log(Status.UnderReview, 'Create this feedback'))
   }
 
-  unwrap(): FeedbackType {
+  getFlat(): FeedbackType {
     return {
       id: this.id,
       title: this.title,
@@ -113,27 +114,17 @@ export class FeedbackDAO {
   logoUrl: string
   description: string
   createdAt: u64
+  createdBy: AccountId
   council: PersistentSet<AccountId>
-  feedbacks: PersistentSet<Feedback>
+  feedbacks: PersistentUnorderedMap<u32, Feedback>
 
   constructor(projectUrl: string, logoUrl: string, description: string) {
     this.projectUrl = projectUrl
     this.logoUrl = logoUrl
     this.description = description
     this.createdAt = context.blockTimestamp
-    this.feedbacks = new PersistentSet<Feedback>('feedbacks')
+    this.feedbacks = new PersistentUnorderedMap<u32, Feedback>('feedbacks')
     this.council = new PersistentSet<AccountId>('council')
-  }
-
-  getInfo(): FeedbackInfo {
-    return {
-      projectUrl: this.projectUrl,
-      logoUrl: this.logoUrl,
-      description: this.description,
-      createdAt: this.createdAt,
-      councilCount: this.council.size,
-      feedbackCount: this.feedbacks.size,
-    }
   }
 }
 
