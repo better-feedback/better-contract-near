@@ -8,27 +8,37 @@ import {
 } from 'near-sdk-as'
 import { AccountId, Balance, Duration } from './types'
 
-export enum Vote {
-  Yes,
-  No,
-}
-
 export enum Status {
-  UnderReview,
-  Accepted,
-  Rejected,
+  Open,
+  Planned,
+  Closed,
   InProgress,
   Completed,
 }
 
+export enum LogType {
+  Status,
+  Comment,
+  Fund,
+  Contribution,
+}
+
+export enum ExperienceLevel {
+  Beginner,
+  Intermediate,
+  Advanced,
+}
+
 @nearBindgen
 export class Fund {
-  amount: u128
+  amount: Balance
   funder: string
+  timestamp: u64
 
-  constructor(amount: u128) {
+  constructor(amount: Balance) {
     this.amount = amount
     this.funder = context.sender
+    this.timestamp = context.blockTimestamp
   }
 }
 
@@ -36,104 +46,108 @@ export class Fund {
 export class Log {
   timestamp: u64
   message: string
-  status: Status
+  logType: LogType
   sender: string
+  status: Status
 
-  constructor(status: i32, message: string) {
-    this.status = status
+  constructor(logType: LogType, message: string, status: Status) {
+    this.logType = logType
     this.message = message
     this.timestamp = context.blockTimestamp
     this.sender = context.sender
+    this.status = status
   }
 }
 
-export class FeedbackType {
-  id: number
-  title: string
-  description: string
-  tags: string[]
-  createdAt: u64
-  createdBy: string
-  likes: AccountId[]
-  status: Status
-  hunter: AccountId[]
-  funds: Fund[]
-  logs: Log[]
+@nearBindgen
+export class Applicant {
+  timestamp: u64
+  approved: boolean
+  message: string
+  applicant: string
+  bountyGoal: Balance
+
+  constructor(bountyGoal: Balance, message: string) {
+    this.bountyGoal = bountyGoal
+    this.message = message
+    this.applicant = context.sender
+    this.timestamp = context.blockTimestamp
+    this.approved = false
+  }
 }
 
 @nearBindgen
-export class Feedback {
+export class Issue {
   id: number
   title: string
   description: string
   tags: string[]
   createdAt: u64
   createdBy: string
-  likes: PersistentSet<AccountId>
+  fundable: boolean
   status: Status
+  experienceLevel: ExperienceLevel
+  category: string
+  likes: PersistentSet<AccountId>
   hunter: PersistentSet<AccountId>
   funds: PersistentSet<Fund>
   logs: PersistentSet<Log>
 
-  constructor(id: number, title: string, description: string, tags: string[]) {
+  constructor(
+    id: number,
+    title: string,
+    description: string,
+    category: string
+  ) {
     const prefix = id.toString() + '-'
     this.id = id
     this.title = title
     this.description = description
-    this.tags = tags
+    this.category = category
+    this.tags = []
     this.createdAt = context.blockTimestamp
     this.createdBy = context.sender
     this.likes = new PersistentSet<AccountId>(prefix + '-likes')
-    this.status = Status.UnderReview
+    this.status = Status.Open
     this.hunter = new PersistentSet<AccountId>(prefix + 'hunter')
     this.funds = new PersistentSet<Fund>(prefix + 'funds')
     this.logs = new PersistentSet<Log>(prefix + 'logs')
-    this.logs.add(new Log(Status.UnderReview, 'Create this feedback'))
+    this.logs.add(new Log(LogType.Status, 'Create this feedback', Status.Open))
   }
+}
 
-  getFlat(): FeedbackType {
-    return {
-      id: this.id,
-      title: this.title,
-      description: this.description,
-      tags: this.tags,
-      createdAt: this.createdAt,
-      createdBy: this.createdBy,
-      likes: this.likes.values(),
-      status: this.status,
-      hunter: this.hunter.values(),
-      funds: this.funds.values(),
-      logs: this.logs.values(),
+@nearBindgen
+export class IssueDAO {
+  info: PersistentMap<string, string>
+  council: PersistentSet<AccountId>
+  issues: PersistentUnorderedMap<u32, Issue>
+  categories: PersistentSet<string>
+
+  constructor(
+    projectUrl: string,
+    logoUrl: string,
+    description: string,
+    categories: string[]
+  ) {
+    this.info = new PersistentMap<string, string>('info')
+    // this.info.set('projectUrl', projectUrl)
+    // this.info.set('logoUrl', logoUrl)
+    // this.info.set('description', description)
+    // this.info.set('createdAt', context.blockTimestamp.toString())
+    // this.info.set('createdBy', context.sender)
+    this.issues = new PersistentUnorderedMap<u32, Issue>('issues')
+    this.council = new PersistentSet<AccountId>('council')
+    this.categories = new PersistentSet<string>('categories')
+    for (let i = 0; i < categories.length; ++i) {
+      this.categories.add(categories[i])
     }
   }
 }
 
-@nearBindgen
-export class FeedbackDAO {
-  projectUrl: string
+export class DAOInfoType {
   logoUrl: string
-  description: string
-  createdAt: u64
-  createdBy: AccountId
-  council: PersistentSet<AccountId>
-  feedbacks: PersistentUnorderedMap<u32, Feedback>
-
-  constructor(projectUrl: string, logoUrl: string, description: string) {
-    this.projectUrl = projectUrl
-    this.logoUrl = logoUrl
-    this.description = description
-    this.createdAt = context.blockTimestamp
-    this.feedbacks = new PersistentUnorderedMap<u32, Feedback>('feedbacks')
-    this.council = new PersistentSet<AccountId>('council')
-  }
-}
-
-@nearBindgen
-export class FeedbackInfo {
   projectUrl: string
-  logoUrl: string
   description: string
-  createdAt: u64
-  councilCount: number
-  feedbackCount: number
+  createdAt: string
+  createdBy: string
 }

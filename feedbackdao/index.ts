@@ -1,63 +1,106 @@
 import { context } from 'near-sdk-as'
-import { AccountId, Balance, Duration } from './types'
-import { Feedback, FeedbackDAO, Status, Fund, Log } from './model'
+import { AccountId } from './types'
+import {
+  Issue,
+  IssueDAO,
+  Status,
+  Fund,
+  Log,
+  LogType,
+  DAOInfoType,
+} from './model'
 
 const MAX_DESCRIPTION_LENGTH: u32 = 280
 
-let dao: FeedbackDAO = new FeedbackDAO('', '', '')
+let dao: IssueDAO = new IssueDAO('', '', '', [])
 
 export function init(
   projectUrl: string,
   logoUrl: string,
-  description: string
-): FeedbackDAO {
+  description: string,
+  categories: string[]
+): IssueDAO {
   assert(
     <u32>description.length < MAX_DESCRIPTION_LENGTH,
     'Description length is too long'
   )
-  dao.projectUrl = projectUrl
-  dao.logoUrl = logoUrl
-  dao.description = description
+  // dao = new IssueDAO(projectUrl, logoUrl, description, categories)
+  dao.info.set('projectUrl', projectUrl)
+  dao.info.set('logoUrl', logoUrl)
+  dao.info.set('description', description)
+  dao.info.set('createdAt', context.blockTimestamp.toString())
+  dao.info.set('createdBy', context.sender)
+  for (let i = 0; i < categories.length; ++i) {
+    dao.categories.add(categories[i])
+  }
   dao.council.add(context.sender)
-  dao.createdBy = context.sender
 
   return dao
 }
 
-export function getDAO(): FeedbackDAO {
+export function getDAO(): IssueDAO {
   return dao
 }
 
-export function getFeedbacks(): Feedback[] {
-  return dao.feedbacks.values()
+export function getDAOInfo(): DAOInfoType {
+  return {
+    logoUrl: dao.info.get('logoUrl', '') as string,
+    projectUrl: dao.info.get('projectUrl', '') as string,
+    description: dao.info.get('description', '') as string,
+    createdAt: dao.info.get('createdAt', '') as string,
+    createdBy: dao.info.get('createdBy', '') as string,
+  }
 }
 
-export function createFeedback(
+export function getCategories(): string[] {
+  return dao.categories.values()
+}
+
+export function updateDAO(
+  projectUrl: string,
+  logoUrl: string,
+  description: string,
+  categories: string[]
+): void {
+  dao.info.set('projectUrl', projectUrl)
+  dao.info.set('logoUrl', logoUrl)
+  dao.info.set('description', description)
+  dao.categories.clear()
+  for (let i = 0; i < categories.length; ++i) {
+    dao.categories.add(categories[i])
+  }
+}
+
+export function getIssues(): Issue[] {
+  return dao.issues.values()
+}
+
+export function createIssue(
   title: string,
   description: string,
-  tags: string[]
+  category: string
 ): void {
-  const id = dao.feedbacks.keys().length
-  const fb = new Feedback(id, title, description, tags)
-  dao.feedbacks.set(id, fb)
+  const id = dao.issues.keys().length
+  const fb = new Issue(id, title, description, category)
+  dao.issues.set(id, fb)
 }
 
-export function getFeedback(id: u32): Feedback | null {
-  return dao.feedbacks.get(id, null)
+export function getIssue(id: u32): Issue | null {
+  return dao.issues.get(id, null)
 }
 
-export function likeFeedback(id: u32): void {
-  const fb = dao.feedbacks.get(id, null)
-  assert(fb != null, 'Feedback does not exist')
+export function likeIssue(id: u32): void {
+  const fb = dao.issues.get(id, null)
+  assert(fb != null, 'Issue does not exist')
   if (fb) {
     fb.likes.add(context.sender)
-    dao.feedbacks.set(id, fb)
+    dao.issues.set(id, fb)
   }
 }
 
 export function getLikes(id: u32): AccountId[] {
-  const fb = dao.feedbacks.get(id, null)
-  assert(fb != null, 'Feedback does not exist')
+  const fb = dao.issues.get(id, null)
+  assert(fb != null, 'Issue does not exist')
   if (fb) {
     return fb.likes.values()
   }
@@ -65,8 +108,8 @@ export function getLikes(id: u32): AccountId[] {
 }
 
 export function getFunds(id: u32): Fund[] {
-  const fb = dao.feedbacks.get(id, null)
-  assert(fb != null, 'Feedback does not exist')
+  const fb = dao.issues.get(id, null)
+  assert(fb != null, 'Issue does not exist')
   if (fb) {
     return fb.funds.values()
   }
@@ -78,58 +121,62 @@ export function getCouncil(): AccountId[] {
 }
 
 export function getLogs(id: u32): Log[] {
-  const fb = dao.feedbacks.get(id, null)
-  assert(fb != null, 'Feedback does not exist')
+  const fb = dao.issues.get(id, null)
+  assert(fb != null, 'Issue does not exist')
   if (fb) {
     return fb.logs.values()
   }
   return []
 }
 
-export function acceptFeedback(id: u32): void {
-  const fb = dao.feedbacks.get(id, null)
+export function acceptIssue(id: u32): void {
+  const fb = dao.issues.get(id, null)
   assert(dao.council.has(context.sender), 'Only council members can accept')
-  assert(fb != null, 'Feedback does not exist')
+  assert(fb != null, 'Issue does not exist')
   if (fb) {
-    assert(fb.status == Status.UnderReview, 'Feedback is not under review')
-    fb.logs.add(new Log(Status.Accepted, 'Accept this feedback'))
-    fb.status = Status.Accepted
-    dao.feedbacks.set(id, fb)
+    assert(fb.status == Status.Open, 'Issue is not under review')
+    fb.logs.add(new Log(LogType.Status, 'Accept this feedback', Status.Planned))
+    fb.status = Status.Planned
+    dao.issues.set(id, fb)
   }
 }
 
-export function rejectFeedback(id: u32): void {
-  const fb = dao.feedbacks.get(id, null)
+export function rejectIssue(id: u32): void {
+  const fb = dao.issues.get(id, null)
   assert(dao.council.has(context.sender), 'Only council members can reject')
-  assert(fb != null, 'Feedback does not exist')
+  assert(fb != null, 'Issue does not exist')
   if (fb) {
-    assert(fb.status == Status.UnderReview, 'Feedback is not under review')
-    fb.logs.add(new Log(Status.Rejected, 'Reject this feedback'))
-    fb.status = Status.Rejected
-    dao.feedbacks.set(id, fb)
+    assert(fb.status == Status.Open, 'Issue is not under review')
+    fb.logs.add(new Log(LogType.Status, 'Closed this feedback', Status.Closed))
+    fb.status = Status.Closed
+    dao.issues.set(id, fb)
   }
 }
 
-export function startFeedback(id: u32): void {
-  const fb = dao.feedbacks.get(id, null)
+export function startIssue(id: u32): void {
+  const fb = dao.issues.get(id, null)
   assert(dao.council.has(context.sender), 'Only council members can start')
-  assert(fb != null, 'Feedback does not exist')
+  assert(fb != null, 'Issue does not exist')
   if (fb) {
-    assert(fb.status == Status.Accepted, 'Feedback not accepted yet')
-    fb.logs.add(new Log(Status.InProgress, 'Start this feedback'))
+    assert(fb.status == Status.Planned, 'Issue not accepted yet')
+    fb.logs.add(
+      new Log(LogType.Status, 'Start this feedback', Status.InProgress)
+    )
     fb.status = Status.InProgress
-    dao.feedbacks.set(id, fb)
+    dao.issues.set(id, fb)
   }
 }
 
-export function completeFeedback(id: u32): void {
-  const fb = dao.feedbacks.get(id, null)
+export function completeIssue(id: u32): void {
+  const fb = dao.issues.get(id, null)
   assert(dao.council.has(context.sender), 'Only council members can complete')
-  assert(fb != null, 'Feedback does not exist')
+  assert(fb != null, 'Issue does not exist')
   if (fb) {
-    assert(fb.status == Status.InProgress, 'Feedback not started yet')
-    fb.logs.add(new Log(Status.Completed, 'Complete this feedback'))
+    assert(fb.status == Status.InProgress, 'Issue not started yet')
+    fb.logs.add(
+      new Log(LogType.Status, 'Complete this feedback', Status.Completed)
+    )
     fb.status = Status.Completed
-    dao.feedbacks.set(id, fb)
+    dao.issues.set(id, fb)
   }
 }
