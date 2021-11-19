@@ -142,7 +142,9 @@ export function issueToBounty(id: u32, exLv: ExperienceLevel): void {
   assert(dao.council.has(context.sender), 'Only council members can complete')
   assert(fb !== null, 'Issue does not exist')
   if (fb) {
-    assert(fb.status == Status.Completed, 'Issue not completed yet')
+    assert(fb.status !== Status.Completed, 'Issue completed yet')
+    assert(fb.status !== Status.Closed, 'Issue closed yet')
+    assert(fb.status !== Status.Open, 'Issue not planned yet')
     fb.fundable = true
     fb.experienceLevel = exLv
     dao.issues.set(id, fb)
@@ -174,7 +176,7 @@ export function fundIssue(id: u32, amount: Balance): void {
   const fb = dao.issues.get(id, null)
   assert(fb !== null, 'Issue does not exist')
   if (fb && fb.fundable) {
-    assert(context.accountBalance >= amount, 'Not enough balance')
+    assert(context.accountBalance >= amount, 'Balance not enough ')
     fb.funds.add(new Fund(amount))
     fb.logs.add(new Log(LogType.Fund, 'Fund this issue', fb.status))
     dao.issues.set(id, fb)
