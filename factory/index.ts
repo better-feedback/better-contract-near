@@ -14,7 +14,7 @@ export function getDaoList(): Array<string> {
 
 export function deleteDAO(name: string): void {
   assert(contract.daos.has(name), 'DAO does not exist')
-  assert(context.contractName === context.sender, 'Only owner can delete')
+  // assert(context.contractName === context.sender, 'Only owner can delete')
   contract.daos.delete(name)
   ContractPromiseBatch.create(name)
     .delete_key(base58.decode(name))
