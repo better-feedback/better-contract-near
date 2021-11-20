@@ -64,10 +64,8 @@ export class Applicant {
   approved: boolean
   message: string
   applicant: string
-  bountyGoal: Balance
 
-  constructor(bountyGoal: Balance, message: string) {
-    this.bountyGoal = bountyGoal
+  constructor(message: string) {
     this.message = message
     this.applicant = context.sender
     this.timestamp = context.blockTimestamp

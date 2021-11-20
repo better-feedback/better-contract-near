@@ -113,9 +113,17 @@ export function closeIssue(id: u32): void {
 
 export function startIssue(id: u32): void {
   const fb = dao.issues.get(id, null)
-  assert(dao.council.has(context.sender), 'Only council members can start')
   assert(fb !== null, 'Issue does not exist')
   if (fb) {
+    if (fb.fundable) {
+      const applicant = getApplicant(fb, context.sender)
+      assert(applicant !== null, 'You are not an applicant')
+      if (applicant) {
+        assert(applicant.approved, 'You are not an approved')
+      }
+    } else {
+      assert(dao.council.has(context.sender), 'Only council members can start')
+    }
     assert(fb.status === Status.Planned, 'Issue not accepted yet')
     fb.logs.add(new Log(LogType.Status, 'Start this issue', Status.InProgress))
     fb.status = Status.InProgress
@@ -139,6 +147,7 @@ export function completeIssue(id: u32): void {
 
 export function issueToBounty(id: u32, exLv: ExperienceLevel): void {
   const fb = dao.issues.get(id, null)
+  const amount: u128 = context.attachedDeposit
   assert(dao.council.has(context.sender), 'Only council members can complete')
   assert(fb !== null, 'Issue does not exist')
   if (fb) {
@@ -147,19 +156,60 @@ export function issueToBounty(id: u32, exLv: ExperienceLevel): void {
     assert(fb.status !== Status.Open, 'Issue not planned yet')
     fb.fundable = true
     fb.experienceLevel = exLv
+    fb.funds.add(new Fund(amount))
     dao.issues.set(id, fb)
   }
 }
 
-export function applyIssue(id: u32, goal: Balance, message: string): void {
+export function applyIssue(id: u32, message: string): void {
   const fb = dao.issues.get(id, null)
   assert(fb !== null, 'Issue does not exist')
   if (fb && fb.fundable) {
     assert(fb.status !== Status.Completed, 'Issue has completed yet')
-    const apply = new Applicant(goal, message)
+    const apply = new Applicant(message)
     fb.applicants.add(apply)
-    fb.logs.add(new Log(LogType.Apply, 'Apply this issue', fb.status))
     dao.issues.set(id, fb)
+  }
+}
+
+function getApplicant(fb: Issue, applicantId: AccountId): Applicant | null {
+  const applicants = fb.applicants.values()
+  for (let index = 0; index < applicants.length; index++) {
+    if (applicants[index].applicant == applicantId) {
+      return applicants[index]
+    }
+  }
+  return null
+}
+
+export function approveApplicant(id: u32, applicantId: AccountId): void {
+  const fb = dao.issues.get(id, null)
+  assert(dao.council.has(context.sender), 'Only council members can approve')
+  assert(fb !== null, 'Issue does not exist')
+  if (fb) {
+    const oldApp = getApplicant(fb, applicantId)
+    assert(oldApp !== null, 'Applicant does not exist')
+    if (oldApp) {
+      fb.applicants.delete(oldApp)
+      oldApp.approved = true
+      fb.applicants.add(oldApp)
+    }
+  }
+}
+
+export function cancelApplicant(id: u32, applicantId: AccountId): void {
+  const fb = dao.issues.get(id, null)
+  assert(dao.council.has(context.sender), 'Only council members can cancel')
+  assert(fb !== null, 'Issue does not exist')
+  if (fb) {
+    const oldApp = getApplicant(fb, applicantId)
+    assert(oldApp !== null, 'Applicant does not exist')
+    if (oldApp) {
+      assert(oldApp.approved === true, 'Applicant has not been approved yet')
+      fb.applicants.delete(oldApp)
+      oldApp.approved = false
+      fb.applicants.add(oldApp)
+    }
   }
 }
 
@@ -172,13 +222,13 @@ export function addComment(id: u32, comment: string): void {
   }
 }
 
-export function fundIssue(id: u32, amount: Balance): void {
+export function fundIssue(id: u32): void {
   const fb = dao.issues.get(id, null)
+  const amount: u128 = context.attachedDeposit
   assert(fb !== null, 'Issue does not exist')
   if (fb && fb.fundable) {
     assert(context.accountBalance >= amount, 'Balance not enough ')
     fb.funds.add(new Fund(amount))
-    fb.logs.add(new Log(LogType.Fund, 'Fund this issue', fb.status))
     dao.issues.set(id, fb)
   }
 }
