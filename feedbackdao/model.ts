@@ -64,12 +64,14 @@ export class Applicant {
   approved: boolean
   message: string
   applicant: string
+  claimed: boolean
 
   constructor(message: string) {
     this.message = message
     this.applicant = context.sender
     this.timestamp = context.blockTimestamp
     this.approved = false
+    this.claimed = false
   }
 }
 

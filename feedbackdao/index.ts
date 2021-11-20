@@ -145,6 +145,28 @@ export function completeIssue(id: u32): void {
   }
 }
 
+export function claimBounty(id: u32): void {
+  const fb = dao.issues.get(id, null)
+  assert(fb !== null, 'Issue does not exist')
+  if (fb && fb.fundable) {
+    assert(fb.status === Status.Completed, 'Issue not completed yet')
+    const applicant = getApplicant(fb, context.sender)
+    assert(applicant !== null, 'You are not an applicant')
+    if (applicant) {
+      assert(applicant.approved, 'You are not an approved')
+      let total = u128.from(0)
+      const funds = fb.funds.values()
+      for (let i = 0; i < funds.length; ++i) {
+        total = u128.add(total, funds[i].amount)
+      }
+      fb.applicants.delete(applicant)
+      applicant.claimed = true
+      fb.applicants.add(applicant)
+      ContractPromiseBatch.create(context.sender).transfer(total)
+    }
+  }
+}
+
 export function issueToBounty(id: u32, exLv: ExperienceLevel): void {
   const fb = dao.issues.get(id, null)
   const amount: u128 = context.attachedDeposit
