@@ -4,7 +4,7 @@ import { BetterDAOFactory } from './model'
 const CODE = includeBytes('../build/feedbackdao/release.wasm')
 
 /// This gas spent on the call & account creation, the rest goes to the `new` call.
-const CREATE_CALL_GAS: u64 = 40000000000000
+const CREATE_CALL_GAS: u64 = 30_000_000_000_000
 
 const contract: BetterDAOFactory = new BetterDAOFactory()
 
@@ -23,15 +23,14 @@ export function deleteDAO(name: string): void {
 }
 
 export function create(name: string, args: Uint8Array): void {
-  let accountId = name + '.' + context.contractName
+  const accountId = name + '.' + context.contractName
   assert(!contract.daos.has(accountId), 'Dao name already exists')
   contract.daos.add(accountId)
-  // 1 Near
-  const minAmount = u128.fromString('1000000000000000000000000')
-  let promise = ContractPromiseBatch.create(accountId)
+
+  const promise = ContractPromiseBatch.create(accountId)
     .create_account()
-    .transfer(minAmount)
     .deploy_contract(Uint8Array.wrap(changetype<ArrayBuffer>(CODE)))
+    .transfer(context.attachedDeposit)
     .add_full_access_key(base58.decode(context.senderPublicKey))
 
   promise.function_call(

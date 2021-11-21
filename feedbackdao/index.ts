@@ -215,11 +215,12 @@ export function approveApplicant(id: u32, applicantId: AccountId): void {
       fb.applicants.delete(oldApp)
       oldApp.approved = true
       fb.applicants.add(oldApp)
+      dao.issues.set(id, fb)
     }
   }
 }
 
-export function cancelApplicant(id: u32, applicantId: AccountId): void {
+export function revokeApplicant(id: u32, applicantId: AccountId): void {
   const fb = dao.issues.get(id, null)
   assert(dao.council.has(context.sender), 'Only council members can cancel')
   assert(fb !== null, 'Issue does not exist')
@@ -231,6 +232,8 @@ export function cancelApplicant(id: u32, applicantId: AccountId): void {
       fb.applicants.delete(oldApp)
       oldApp.approved = false
       fb.applicants.add(oldApp)
+      fb.status = Status.Planned
+      dao.issues.set(id, fb)
     }
   }
 }
