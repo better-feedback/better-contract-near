@@ -11,7 +11,7 @@
     "build:contract": "node compile.js",
     "build:contract:debug": "node compile.js --debug",
     "dev:deploy:contract": "near dev-deploy",
-    "deploy:contract": "near deploy --accountId chezhe.testnet --wasmFile build/factory/release.wasm",
+    "deploy:contract": "near deploy --accountId betterhq.testnet --wasmFile build/factory/release.wasm",
     "deploy": "npm run build && npm run deploy:contract",
     "prestart": "npm run build:contract:debug && npm run dev:deploy:contract"
   },

@@ -1,4 +1,4 @@
-import { context, u128, ContractPromiseBatch } from 'near-sdk-as'
+import { context, u128, ContractPromiseBatch, env } from 'near-sdk-as'
 import { AccountId, Balance } from './types'
 import {
   Issue,
@@ -53,6 +53,21 @@ export function updateDAO(
   for (let i = 0; i < categories.length; ++i) {
     dao.categories.add(categories[i])
   }
+}
+
+export function addCouncilMember(account: AccountId): void {
+  assert(env.isValidAccountID(account), 'The account is invalid')
+  assert(dao.council.has(context.sender), 'Only council and creator can update')
+  assert(!dao.council.has(account), 'The account is already in council')
+  dao.council.add(account)
+}
+
+export function removeCouncilMember(account: AccountId): void {
+  assert(env.isValidAccountID(account), 'The account is invalid')
+  assert(dao.council.has(context.sender), 'Only council and creator can update')
+  assert(dao.council.has(account), 'The account is not in council')
+  assert(account !== context.sender, 'You can not remove yourself from council')
+  dao.council.delete(account)
 }
 
 export function createIssue(
