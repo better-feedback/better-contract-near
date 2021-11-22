@@ -1,54 +1,42 @@
-import { context, ContractPromiseBatch, base58, u128 } from 'near-sdk-as'
-import { BetterDAO, daos } from './model'
+import { ContractPromiseBatch, context, u128, base58, env } from 'near-sdk-as'
+import { BetterDAOFactory } from './model'
 
-const CODE = includeBytes('../build/bountydao/release.wasm')
+const CODE = includeBytes('../build/feedbackdao/release.wasm')
 
-export function getDAOs(): BetterDAO[] {
-  return daos.values()
+/// This gas spent on the call & account creation, the rest goes to the `new` call.
+const CREATE_CALL_GAS: u64 = 30_000_000_000_000
+
+const contract: BetterDAOFactory = new BetterDAOFactory()
+
+export function getDaoList(): Array<string> {
+  return contract.daos.values()
 }
 
-export function getDAO(name: string): BetterDAO | null {
-  const dao = daos.get(name, null)
-  return dao
+export function deleteDAO(name: string): void {
+  assert(env.isValidAccountID(name), 'not a valid account')
+  assert(env.isValidAccountID(name), 'not a valid beneficiary account')
+
+  assert(contract.daos.has(name), 'DAO does not exist')
+  // assert(context.contractName === context.sender, 'Only owner can delete')
+  contract.daos.delete(name)
+  ContractPromiseBatch.create(name).delete_account(name)
 }
 
-export function createDAO(
-  name: string,
-  url: string,
-  logoUrl: string,
-  description: string,
-  tags: string[]
-): void {
-  assert(!daos.contains(name), 'DAO already exists')
+export function create(name: string, args: Uint8Array): void {
+  const accountId = name + '.' + context.contractName
+  assert(!contract.daos.has(accountId), 'Dao name already exists')
+  contract.daos.add(accountId)
 
-  const sub_account_id = name + '.' + context.contractName
-
-  // 1 Near
-  const minAmount = u128.fromString('1000000000000000000000000')
-  assert(context.accountBalance > minAmount, 'Not enough balance')
-
-  ContractPromiseBatch.create(sub_account_id)
+  const promise = ContractPromiseBatch.create(accountId)
     .create_account()
-    .transfer(minAmount)
-    .add_full_access_key(base58.decode(context.senderPublicKey))
     .deploy_contract(Uint8Array.wrap(changetype<ArrayBuffer>(CODE)))
+    .transfer(context.attachedDeposit)
+    .add_full_access_key(base58.decode(context.senderPublicKey))
 
-  const dao = new BetterDAO(name, url, logoUrl, description)
-
-  daos.set(name, dao)
-}
-
-export function updateMetadata(
-  name: string,
-  url: string,
-  logoUrl: string,
-  description: string
-): void {
-  const dao = daos.get(name, null)
-  assert(dao != null, 'DAO does not exist')
-  if (dao) {
-    assert(dao.owner !== context.sender, 'Not owner')
-    dao.updateMetadata(url, logoUrl, description)
-    daos.set(name, dao)
-  }
+  promise.function_call(
+    'init',
+    args,
+    u128.Zero,
+    env.prepaid_gas() - CREATE_CALL_GAS
+  )
 }
