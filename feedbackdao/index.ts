@@ -317,6 +317,15 @@ export function getIssues(): Issue[] {
   return dao.issues.values()
 }
 
+export function getIssuesInfo(): (IssueInfoType | null)[] {
+  const issues = dao.issues.values()
+  const issuesInfo: (IssueInfoType | null)[] = []
+  for (let index = 0; index < issues.length; index++) {
+    issuesInfo.push(getIssueInfo(issues[index].id))
+  }
+  return issuesInfo
+}
+
 export function getIssue(id: u32): Issue | null {
   return dao.issues.get(id, null)
 }

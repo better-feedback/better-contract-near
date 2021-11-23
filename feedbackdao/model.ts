@@ -77,7 +77,7 @@ export class Applicant {
 
 @nearBindgen
 export class Issue {
-  id: number
+  id: u32
   title: string
   description: string
   tags: string[]
@@ -92,12 +92,7 @@ export class Issue {
   funds: PersistentSet<Fund>
   logs: PersistentSet<Log>
 
-  constructor(
-    id: number,
-    title: string,
-    description: string,
-    category: string
-  ) {
+  constructor(id: u32, title: string, description: string, category: string) {
     const prefix = id.toString() + '-'
     this.id = id
     this.title = title
