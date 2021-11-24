@@ -326,6 +326,17 @@ export function getIssuesInfo(): (IssueInfoType | null)[] {
   return issuesInfo
 }
 
+export function getBountiesInfo(): (IssueInfoType | null)[] {
+  const issues = dao.issues.values()
+  const issuesInfo: (IssueInfoType | null)[] = []
+  for (let index = 0; index < issues.length; index++) {
+    if (issues[index].fundable) {
+      issuesInfo.push(getIssueInfo(issues[index].id))
+    }
+  }
+  return issuesInfo
+}
+
 export function getIssue(id: u32): Issue | null {
   return dao.issues.get(id, null)
 }
